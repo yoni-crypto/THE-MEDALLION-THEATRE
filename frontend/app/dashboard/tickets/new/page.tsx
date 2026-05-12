@@ -71,7 +71,8 @@ export default function ReserveTicketPage() {
 
   function goToSeatMap() {
     if (selectedPerformance) {
-      router.push(`/dashboard/performances/${selectedPerformance.performanceid}/seats`);
+      const qs = selectedPatron ? `?patron=${selectedPatron.patronid}` : '';
+      router.push(`/dashboard/performances/${selectedPerformance.performanceid}/seats${qs}`);
     }
   }
 

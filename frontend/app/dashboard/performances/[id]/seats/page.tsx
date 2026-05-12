@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { X, Trash2 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
 import { isManager } from '@/lib/auth';
+import MedallionLogo from '@/components/MedallionLogo';
 
 interface Seat {
   seatid: string;
@@ -83,6 +84,15 @@ export default function SeatMapPage() {
       const perf = perfData.find((p: Performance) => p.performanceid === id);
       if (perf) setPerformance(perf);
     }).finally(() => setLoading(false));
+
+    const params = new URLSearchParams(window.location.search);
+    const patronId = params.get('patron');
+    if (patronId) {
+      apiFetch(`/api/patrons/${patronId}`).then(p => {
+        setSelectedPatron(p);
+        setPatronSearch(`${p.firstname} ${p.lastname}`);
+      }).catch(() => {});
+    }
   }, [id]);
 
   useEffect(() => {
@@ -169,13 +179,30 @@ export default function SeatMapPage() {
     );
   }
 
-  function SeatRow({ row, count }: { row: string; count: number }) {
+  function SeatRow({ row, leftCount, centerCount, rightCount }: { row: string; leftCount: number; centerCount: number; rightCount: number }) {
     return (
-      <div className="flex items-center gap-1 mb-1">
-        <span className="text-xs w-6 text-right mr-1" style={{ color: '#9ca3af' }}>{row}</span>
-        {Array.from({ length: count }, (_, i) => (
-          <SeatButton key={i} seat={getSeat(row, i + 1)} />
-        ))}
+      <div className="flex items-center justify-center mb-1 relative z-10">
+        <div className="flex gap-1 justify-end" style={{ width: 204 }}>
+          {Array.from({ length: leftCount }, (_, i) => (
+            <SeatButton key={i} seat={getSeat(row, i + 1)} />
+          ))}
+        </div>
+        
+        <span className="text-xs w-6 text-center mx-2 font-bold" style={{ color: '#9ca3af' }}>{row}</span>
+        
+        <div className="flex gap-1 justify-center" style={{ width: 360 }}>
+          {Array.from({ length: centerCount }, (_, i) => (
+            <SeatButton key={i} seat={getSeat(row, leftCount + i + 1)} />
+          ))}
+        </div>
+        
+        <span className="text-xs w-6 text-center mx-2 font-bold" style={{ color: '#9ca3af' }}>{row}</span>
+        
+        <div className="flex gap-1 justify-start" style={{ width: 204 }}>
+          {Array.from({ length: rightCount }, (_, i) => (
+            <SeatButton key={i} seat={getSeat(row, leftCount + centerCount + i + 1)} />
+          ))}
+        </div>
       </div>
     );
   }
@@ -197,44 +224,77 @@ export default function SeatMapPage() {
         </p>
       </div>
 
-      <div className="flex gap-8 flex-wrap">
-        <div>
-          <div className="text-center text-xs py-2 mb-4 rounded" style={{ backgroundColor: '#c9a84c22', color: '#c9a84c', border: '1px solid #c9a84c44', width: 700 }}>
-            STAGE
-          </div>
-
-          <div className="flex gap-3 mb-4">
-            <div className="flex flex-col gap-1 justify-center">
-              <p className="text-xs mb-1 text-center" style={{ color: '#c9a84c' }}>BOX<br/>1-8</p>
-              {Array.from({ length: 8 }, (_, i) => <SeatButton key={i} seat={getBoxSeat(i + 1)} />)}
-            </div>
-            <div>
-              {ORCHESTRA_ROWS.map(row => <SeatRow key={row} row={row} count={30} />)}
-            </div>
-            <div className="flex flex-col gap-1 justify-center">
-              <p className="text-xs mb-1 text-center" style={{ color: '#c9a84c' }}>BOX<br/>9-16</p>
-              {Array.from({ length: 8 }, (_, i) => <SeatButton key={i} seat={getBoxSeat(i + 9)} />)}
-            </div>
-          </div>
-
-          <div className="mb-4">
-            {MEZZANINE_ROWS.map(row => <SeatRow key={row} row={row} count={30} />)}
-          </div>
-
-          <div>
-            {BALCONY_ROWS.map(row => <SeatRow key={row} row={row} count={BALCONY_COUNTS[row]} />)}
-          </div>
-
-          <div className="flex flex-wrap gap-4 mt-6">
-            {Object.entries(categoryColors).map(([cat, colors]) => (
-              <div key={cat} className="flex items-center gap-2">
-                <div style={{ width: 14, height: 14, borderRadius: 2, backgroundColor: colors.available }} />
-                <span className="text-xs" style={{ color: '#9ca3af' }}>{colors.label}</span>
+      <div className="flex gap-8 flex-wrap items-start">
+        <div className="overflow-x-auto pb-4">
+          <div className="flex items-start justify-center gap-10" style={{ minWidth: 1050 }}>
+            {/* Left Box */}
+            <div className="mt-20 flex items-center gap-4">
+              <div className="text-2xl font-bold tracking-widest" style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', color: '#9ca3af' }}>BOX 1-8</div>
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-1"><SeatButton seat={getBoxSeat(1)} /><SeatButton seat={getBoxSeat(2)} /></div>
+                <div className="flex gap-1 ml-4"><SeatButton seat={getBoxSeat(3)} /><SeatButton seat={getBoxSeat(4)} /></div>
+                <div className="flex gap-1"><SeatButton seat={getBoxSeat(5)} /><SeatButton seat={getBoxSeat(6)} /></div>
+                <div className="flex gap-1 ml-4"><SeatButton seat={getBoxSeat(7)} /><SeatButton seat={getBoxSeat(8)} /></div>
               </div>
-            ))}
-            <div className="flex items-center gap-2">
-              <div style={{ width: 14, height: 14, borderRadius: 2, backgroundColor: '#374151' }} />
-              <span className="text-xs" style={{ color: '#9ca3af' }}>Taken</span>
+            </div>
+
+            {/* Main Seating Area */}
+            <div className="flex flex-col items-center">
+              {/* Stage */}
+              <div className="w-full text-center text-sm py-4 mb-8 font-bold tracking-[0.5em]" style={{ backgroundColor: '#c9a84c11', color: '#c9a84c', border: '1px solid #c9a84c44', clipPath: 'polygon(5% 0%, 95% 0%, 100% 100%, 0% 100%)' }}>
+                STAGE
+              </div>
+
+              {/* ORCHESTRA */}
+              <div className="relative mb-6">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                  <span className="text-5xl font-bold tracking-widest" style={{ color: '#ffffff10' }}>ORCHESTRA</span>
+                </div>
+                {ORCHESTRA_ROWS.map(row => <SeatRow key={row} row={row} leftCount={8} centerCount={14} rightCount={8} />)}
+              </div>
+
+              {/* MEZZANINE */}
+              <div className="relative mb-6">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                  <span className="text-5xl font-bold tracking-widest" style={{ color: '#ffffff10' }}>MEZZANINE</span>
+                </div>
+                {MEZZANINE_ROWS.map(row => <SeatRow key={row} row={row} leftCount={8} centerCount={14} rightCount={8} />)}
+              </div>
+
+              {/* BALCONY */}
+              <div className="relative mb-8">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                  <span className="text-5xl font-bold tracking-widest" style={{ color: '#ffffff10' }}>BALCONY</span>
+                </div>
+                {['AA', 'BB', 'CC'].map(row => <SeatRow key={row} row={row} leftCount={8} centerCount={14} rightCount={8} />)}
+                <SeatRow row="DD" leftCount={7} centerCount={14} rightCount={7} />
+                {['EE', 'FF'].map(row => <SeatRow key={row} row={row} leftCount={5} centerCount={14} rightCount={5} />)}
+              </div>
+
+              {/* Legend */}
+              <div className="flex flex-wrap justify-center gap-4 mt-2">
+                {Object.entries(categoryColors).map(([cat, colors]) => (
+                  <div key={cat} className="flex items-center gap-2">
+                    <div style={{ width: 14, height: 14, borderRadius: 2, backgroundColor: colors.available }} />
+                    <span className="text-xs" style={{ color: '#9ca3af' }}>{colors.label}</span>
+                  </div>
+                ))}
+                <div className="flex items-center gap-2">
+                  <div style={{ width: 14, height: 14, borderRadius: 2, backgroundColor: '#374151' }} />
+                  <span className="text-xs" style={{ color: '#9ca3af' }}>Taken</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Box */}
+            <div className="mt-20 flex items-center gap-4">
+              <div className="flex flex-col gap-2">
+                <div className="flex gap-1 ml-4"><SeatButton seat={getBoxSeat(9)} /><SeatButton seat={getBoxSeat(10)} /></div>
+                <div className="flex gap-1"><SeatButton seat={getBoxSeat(11)} /><SeatButton seat={getBoxSeat(12)} /></div>
+                <div className="flex gap-1 ml-4"><SeatButton seat={getBoxSeat(13)} /><SeatButton seat={getBoxSeat(14)} /></div>
+                <div className="flex gap-1"><SeatButton seat={getBoxSeat(15)} /><SeatButton seat={getBoxSeat(16)} /></div>
+              </div>
+              <div className="text-2xl font-bold tracking-widest" style={{ writingMode: 'vertical-rl', color: '#9ca3af' }}>BOX 9-16</div>
             </div>
           </div>
         </div>
@@ -321,29 +381,112 @@ export default function SeatMapPage() {
 
       {/* Will Call Receipt */}
       {receipt && (
-        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: '#000000aa' }}>
-          <div className="print-area rounded-lg p-8 max-w-md w-full" style={{ backgroundColor: '#fffde7', color: '#1a1a2e' }}>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold">Will Call Reservation Form</h2>
-              <button onClick={() => setReceipt(null)} className="no-print" style={{ color: '#9ca3af' }}><X size={18} /></button>
+        <div className="fixed inset-0 flex items-center justify-center z-50 p-4" style={{ backgroundColor: '#000000aa' }}>
+          <div className="print-area relative shadow-2xl" style={{ backgroundColor: '#fef5cc', width: '800px', maxWidth: '100%', border: '4px solid #000', padding: '40px 60px', color: '#000' }}>
+            
+            <button onClick={() => setReceipt(null)} className="no-print absolute top-4 right-4 hover:opacity-70" style={{ color: '#000' }}><X size={24} /></button>
+
+            <div className="flex items-center mb-8">
+              <div className="flex-shrink-0">
+                <MedallionLogo size={100} />
+              </div>
+              <div className="flex-1 text-center -ml-10">
+                <h2 className="text-xl font-bold tracking-wide">Will Call Reservation Form</h2>
+              </div>
             </div>
-            <div className="text-sm flex flex-col gap-1 mb-4">
-              <p><strong>First Name:</strong> {receipt.patron.firstname} &nbsp; <strong>Last Name:</strong> {receipt.patron.lastname}</p>
-              <p><strong>Street Address:</strong> {receipt.patron.streetaddress}</p>
-              <p><strong>City:</strong> {receipt.patron.city} &nbsp; <strong>State:</strong> {receipt.patron.state} &nbsp; <strong>Zip:</strong> {receipt.patron.zipcode}</p>
-              <p><strong>Phone:</strong> {receipt.patron.phonenumber} &nbsp; <strong>Email:</strong> {receipt.patron.email}</p>
+
+            <div className="flex flex-col gap-6">
+              {/* Row 1 */}
+              <div className="flex items-end gap-2">
+                <span className="font-bold text-sm whitespace-nowrap">First Name</span>
+                <div className="border-b-2 border-black flex-1 text-center font-bold pb-1" style={{ fontFamily: "'Comic Sans MS', cursive, sans-serif", fontSize: '1.2rem', lineHeight: '1' }}>
+                  {receipt.patron.firstname}
+                </div>
+                <span className="font-bold text-sm whitespace-nowrap ml-4">Last Name</span>
+                <div className="border-b-2 border-black flex-1 text-center font-bold pb-1" style={{ fontFamily: "'Comic Sans MS', cursive, sans-serif", fontSize: '1.2rem', lineHeight: '1' }}>
+                  {receipt.patron.lastname}
+                </div>
+              </div>
+
+              {/* Row 2 */}
+              <div className="flex items-end gap-2">
+                <span className="font-bold text-sm whitespace-nowrap">Street Address</span>
+                <div className="border-b-2 border-black flex-1 text-center font-bold pb-1" style={{ fontFamily: "'Comic Sans MS', cursive, sans-serif", fontSize: '1.2rem', lineHeight: '1' }}>
+                  {receipt.patron.streetaddress}
+                </div>
+              </div>
+
+              {/* Row 3 */}
+              <div className="flex items-end gap-2">
+                <span className="font-bold text-sm whitespace-nowrap">City</span>
+                <div className="border-b-2 border-black w-48 text-center font-bold pb-1" style={{ fontFamily: "'Comic Sans MS', cursive, sans-serif", fontSize: '1.2rem', lineHeight: '1' }}>
+                  {receipt.patron.city}
+                </div>
+                <span className="font-bold text-sm whitespace-nowrap ml-2">State</span>
+                <div className="border-b-2 border-black w-24 text-center font-bold pb-1" style={{ fontFamily: "'Comic Sans MS', cursive, sans-serif", fontSize: '1.2rem', lineHeight: '1' }}>
+                  {receipt.patron.state}
+                </div>
+                <span className="font-bold text-sm whitespace-nowrap ml-2">Zip</span>
+                <div className="border-b-2 border-black flex-1 text-center font-bold pb-1" style={{ fontFamily: "'Comic Sans MS', cursive, sans-serif", fontSize: '1.2rem', lineHeight: '1' }}>
+                  {receipt.patron.zipcode}
+                </div>
+              </div>
+
+              {/* Row 4 */}
+              <div className="flex items-end gap-2">
+                <span className="font-bold text-sm whitespace-nowrap">Phone Number</span>
+                <div className="border-b-2 border-black w-48 text-center font-bold pb-1" style={{ fontFamily: "'Comic Sans MS', cursive, sans-serif", fontSize: '1.2rem', lineHeight: '1' }}>
+                  {receipt.patron.phonenumber}
+                </div>
+                <span className="font-bold text-sm whitespace-nowrap ml-2">Email address</span>
+                <div className="border-b-2 border-black flex-1 text-center font-bold pb-1" style={{ fontFamily: "'Comic Sans MS', cursive, sans-serif", fontSize: '1.2rem', lineHeight: '1' }}>
+                  {receipt.patron.email}
+                </div>
+              </div>
+
+              <div className="h-4"></div> {/* Blank Space */}
+
+              {/* Row 5 */}
+              <div className="flex items-end gap-2">
+                <span className="font-bold text-sm whitespace-nowrap">Performance</span>
+                <div className="border-b-2 border-black flex-1 text-center font-bold pb-1" style={{ fontFamily: "'Comic Sans MS', cursive, sans-serif", fontSize: '1.2rem', lineHeight: '1' }}>
+                  {receipt.performance.productionname}
+                </div>
+                <span className="font-bold text-sm whitespace-nowrap ml-4">Date</span>
+                <div className="border-b-2 border-black w-32 text-center font-bold pb-1" style={{ fontFamily: "'Comic Sans MS', cursive, sans-serif", fontSize: '1.2rem', lineHeight: '1' }}>
+                  {new Date(receipt.performance.performancedate).toLocaleDateString()}
+                </div>
+                <span className="font-bold text-sm whitespace-nowrap ml-4">Time</span>
+                <div className="border-b-2 border-black w-32 text-center font-bold pb-1" style={{ fontFamily: "'Comic Sans MS', cursive, sans-serif", fontSize: '1.2rem', lineHeight: '1' }}>
+                  {receipt.performance.performancetype === 'evening' ? 'Evening' : 'Matinee'}
+                </div>
+              </div>
+
+              {/* Row 6 */}
+              <div className="flex items-end gap-2">
+                <span className="font-bold text-sm whitespace-nowrap">Seats</span>
+                <div className="border-b-2 border-black w-64 text-center font-bold pb-1" style={{ fontFamily: "'Comic Sans MS', cursive, sans-serif", fontSize: '1.2rem', lineHeight: '1' }}>
+                  {receipt.seat.seatnumber}
+                </div>
+                <div className="flex-1"></div>
+              </div>
+
+              <div className="h-6"></div> {/* Blank Space */}
+
+              {/* Row 7 */}
+              <div className="flex items-end gap-2">
+                <span className="font-bold text-sm whitespace-nowrap">Total to be Collected</span>
+                <div className="font-bold text-lg mx-2">$</div>
+                <div className="border-b-2 border-black w-32 text-center font-bold pb-1" style={{ fontFamily: "'Comic Sans MS', cursive, sans-serif", fontSize: '1.2rem', lineHeight: '1' }}>
+                  {receipt.seat.price}
+                </div>
+              </div>
+
             </div>
-            <div className="text-sm flex flex-col gap-1 mb-4" style={{ borderTop: '1px solid #c9a84c', paddingTop: 12 }}>
-              <p><strong>Performance:</strong> {receipt.performance.productionname}</p>
-              <p><strong>Date:</strong> {new Date(receipt.performance.performancedate).toLocaleDateString()} &nbsp; <strong>Time:</strong> {receipt.performance.performancetype}</p>
-              <p><strong>Seat:</strong> {receipt.seat.seatnumber} ({receipt.seat.seatcategory})</p>
-            </div>
-            <div className="flex items-center justify-between" style={{ borderTop: '1px solid #c9a84c', paddingTop: 12 }}>
-              <p className="font-bold">Total to be Collected: <span style={{ color: '#c9a84c' }}>${receipt.seat.price}</span></p>
-              <button onClick={() => window.print()} className="no-print px-4 py-1 rounded text-sm font-semibold" style={{ backgroundColor: '#c9a84c', color: '#1a1a2e' }}>
-                Print
-              </button>
-            </div>
+
+            <button onClick={() => window.print()} className="no-print absolute bottom-6 right-6 px-6 py-2 rounded text-sm font-semibold" style={{ backgroundColor: '#1a1a2e', color: '#fff8e7' }}>
+              Print Receipt
+            </button>
           </div>
         </div>
       )}
