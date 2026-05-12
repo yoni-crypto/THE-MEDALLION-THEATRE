@@ -58,7 +58,8 @@ router.get('/patron/search', async (req, res) => {
       `SELECT * FROM patron
        WHERE LOWER(CONCAT(firstname, ' ', lastname)) LIKE $1
           OR LOWER(firstname) LIKE $1
-          OR LOWER(lastname) LIKE $1`,
+          OR LOWER(lastname) LIKE $1
+          OR CAST(patronid AS TEXT) LIKE $1`,
       [`%${name.toLowerCase()}%`]
     );
 

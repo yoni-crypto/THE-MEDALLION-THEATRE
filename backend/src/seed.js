@@ -47,12 +47,17 @@ async function seedData() {
 
   const { rows: existingUsers } = await pool.query('SELECT 1 FROM users LIMIT 1');
   if (existingUsers.length === 0) {
-    const hash = await bcrypt.hash('admin123', 10);
+    const managerHash = await bcrypt.hash('admin123', 10);
+    const clerkHash = await bcrypt.hash('clerk123', 10);
     await pool.query(
       'INSERT INTO users (username, passwordhash, role) VALUES ($1, $2, $3)',
-      ['admin', hash, 'manager']
+      ['admin', managerHash, 'manager']
     );
-    console.log('Seeded default admin user');
+    await pool.query(
+      'INSERT INTO users (username, passwordhash, role) VALUES ($1, $2, $3)',
+      ['clerk', clerkHash, 'clerk']
+    );
+    console.log('Seeded default admin and clerk users');
   }
 }
 

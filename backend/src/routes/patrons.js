@@ -9,11 +9,16 @@ router.use(verifyToken);
 /*
  * GET /api/patrons
  * Returns all patrons ordered by last name.
+ * Includes a ticketcount field showing total tickets purchased.
  */
 router.get('/', async (req, res) => {
   try {
     const { rows } = await pool.query(
-      'SELECT * FROM patron ORDER BY lastname, firstname'
+      `SELECT p.*, COUNT(t.ticketid)::int AS ticketcount
+       FROM patron p
+       LEFT JOIN ticket t ON t.patronid = p.patronid
+       GROUP BY p.patronid
+       ORDER BY p.lastname, p.firstname`
     );
     res.json(rows);
   } catch {
@@ -24,7 +29,7 @@ router.get('/', async (req, res) => {
 /*
  * GET /api/patrons/search?q=
  * Searches patrons by first name, last name, or patronid.
- * The query is case-insensitive and matches partial strings.
+ * Includes ticketcount per patron. Case-insensitive partial match.
  */
 router.get('/search', async (req, res) => {
   const { q } = req.query;
@@ -32,12 +37,15 @@ router.get('/search', async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT * FROM patron
-       WHERE LOWER(firstname) LIKE $1
-          OR LOWER(lastname) LIKE $1
-          OR LOWER(CONCAT(firstname, ' ', lastname)) LIKE $1
-          OR CAST(patronid AS TEXT) LIKE $1
-       ORDER BY lastname, firstname`,
+      `SELECT p.*, COUNT(t.ticketid)::int AS ticketcount
+       FROM patron p
+       LEFT JOIN ticket t ON t.patronid = p.patronid
+       WHERE LOWER(p.firstname) LIKE $1
+          OR LOWER(p.lastname) LIKE $1
+          OR LOWER(CONCAT(p.firstname, ' ', p.lastname)) LIKE $1
+          OR CAST(p.patronid AS TEXT) LIKE $1
+       GROUP BY p.patronid
+       ORDER BY p.lastname, p.firstname`,
       [`%${q.toLowerCase()}%`]
     );
     res.json(rows);

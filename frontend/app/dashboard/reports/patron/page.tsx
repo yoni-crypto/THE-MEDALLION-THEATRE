@@ -62,7 +62,7 @@ export default function PatronReportPage() {
 
       <input
         type="text"
-        placeholder="Search patron by name..."
+        placeholder="Search by name or patron ID..."
         value={query}
         onChange={e => setQuery(e.target.value)}
         className="mb-6 px-3 py-2 rounded text-sm outline-none"

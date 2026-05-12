@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, Users, Theater, CalendarDays, Ticket, BarChart2, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Theater, CalendarDays, Ticket, BarChart2, LogOut, UserCog } from 'lucide-react';
 import { isAuthenticated, getUser, logout, isManager } from '@/lib/auth';
 import MedallionLogo from '@/components/MedallionLogo';
 
@@ -14,6 +14,7 @@ const navLinks = [
   { href: '/dashboard/performances', label: 'Performances', icon: CalendarDays, managerOnly: false },
   { href: '/dashboard/tickets/new', label: 'Reserve Ticket', icon: Ticket, managerOnly: false },
   { href: '/dashboard/reports', label: 'Reports', icon: BarChart2, managerOnly: false },
+  { href: '/dashboard/users', label: 'Users', icon: UserCog, managerOnly: true },
 ];
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -47,8 +48,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="flex min-h-screen" style={{ backgroundColor: '#1a1a2e' }}>
-      <aside className="flex flex-col w-56 shrink-0 py-6 px-4" style={{ backgroundColor: '#0f0f23', borderRight: '1px solid #c9a84c22' }}>
+    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#1a1a2e' }}>
+      <aside className="flex flex-col w-56 shrink-0 h-screen sticky top-0 py-6 px-4 overflow-y-auto" style={{ backgroundColor: '#0f0f23', borderRight: '1px solid #c9a84c22' }}>
         <div className="flex flex-col items-center mb-8">
           <MedallionLogo size={72} />
           <p className="mt-2 text-xs tracking-widest text-center" style={{ color: '#c9a84c' }}>MEDALLION THEATRE</p>
@@ -88,7 +89,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </button>
         </div>
       </aside>
-      <main className="flex-1 overflow-auto p-8">{children}</main>
+      <main className="flex-1 h-screen overflow-y-auto p-8 w-0">{children}</main>
     </div>
   );
 }

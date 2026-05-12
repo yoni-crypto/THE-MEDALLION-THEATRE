@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { X } from 'lucide-react';
+import { X, Trash2 } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
+import { isManager } from '@/lib/auth';
 
 interface Seat {
   seatid: string;
@@ -11,6 +12,7 @@ interface Seat {
   seatcategory: 'Orchestra' | 'Mezzanine' | 'Balcony' | 'Box';
   price: string;
   isavailable: boolean;
+  ticketid?: string;
   firstname?: string;
   lastname?: string;
 }
@@ -52,15 +54,27 @@ export default function SeatMapPage() {
   const [seats, setSeats] = useState<Seat[]>([]);
   const [performance, setPerformance] = useState<Performance | null>(null);
   const [loading, setLoading] = useState(true);
+  const [manager, setManager] = useState(false);
+
   const [selected, setSelected] = useState<Seat | null>(null);
   const [patrons, setPatrons] = useState<Patron[]>([]);
   const [patronSearch, setPatronSearch] = useState('');
   const [selectedPatron, setSelectedPatron] = useState<Patron | null>(null);
   const [reserving, setReserving] = useState(false);
   const [reserveError, setReserveError] = useState('');
+
+  const [cancelSeat, setCancelSeat] = useState<Seat | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+
   const [receipt, setReceipt] = useState<{ patron: Patron; seat: Seat; performance: Performance } | null>(null);
 
+  async function refreshSeats() {
+    const updated = await apiFetch(`/api/performances/${id}/seats`);
+    setSeats(updated);
+  }
+
   useEffect(() => {
+    setManager(isManager());
     Promise.all([
       apiFetch(`/api/performances/${id}/seats`),
       apiFetch('/api/performances'),
@@ -87,6 +101,16 @@ export default function SeatMapPage() {
     return seats.find(s => s.seatnumber === `X${num}`);
   }
 
+  function handleSeatClick(seat: Seat) {
+    if (seat.isavailable) {
+      setSelected(seat);
+      setCancelSeat(null);
+    } else if (manager) {
+      setCancelSeat(seat);
+      setSelected(null);
+    }
+  }
+
   async function handleReserve() {
     if (!selected || !selectedPatron) return;
     setReserveError('');
@@ -100,8 +124,7 @@ export default function SeatMapPage() {
       setSelected(null);
       setSelectedPatron(null);
       setPatronSearch('');
-      const updated = await apiFetch(`/api/performances/${id}/seats`);
-      setSeats(updated);
+      await refreshSeats();
     } catch (err: unknown) {
       setReserveError(err instanceof Error ? err.message : 'Reservation failed');
     } finally {
@@ -109,21 +132,37 @@ export default function SeatMapPage() {
     }
   }
 
+  async function handleCancel() {
+    if (!cancelSeat?.ticketid) return;
+    setCancelling(true);
+    try {
+      await apiFetch(`/api/tickets/${cancelSeat.ticketid}`, { method: 'DELETE' });
+      setCancelSeat(null);
+      await refreshSeats();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : 'Failed to cancel ticket');
+    } finally {
+      setCancelling(false);
+    }
+  }
+
   function SeatButton({ seat }: { seat: Seat | undefined }) {
     if (!seat) return <div style={{ width: 22, height: 22 }} />;
     const colors = categoryColors[seat.seatcategory];
+    const isSelected = selected?.seatid === seat.seatid || cancelSeat?.seatid === seat.seatid;
+    const clickable = seat.isavailable || (!seat.isavailable && manager);
     return (
       <button
         title={`${seat.seatnumber} — ${seat.isavailable ? `$${seat.price}` : `${seat.firstname} ${seat.lastname}`}`}
-        onClick={() => seat.isavailable && setSelected(seat)}
+        onClick={() => handleSeatClick(seat)}
         style={{
           width: 22,
           height: 22,
           borderRadius: 3,
           backgroundColor: seat.isavailable ? colors.available : colors.taken,
-          border: selected?.seatid === seat.seatid ? '2px solid #fff' : '1px solid transparent',
-          cursor: seat.isavailable ? 'pointer' : 'not-allowed',
-          opacity: seat.isavailable ? 1 : 0.5,
+          border: isSelected ? '2px solid #fff' : '1px solid transparent',
+          cursor: clickable ? 'pointer' : 'not-allowed',
+          opacity: seat.isavailable ? 1 : (manager ? 0.7 : 0.4),
           flexShrink: 0,
         }}
       />
@@ -154,52 +193,38 @@ export default function SeatMapPage() {
         </h1>
         <p className="text-sm mt-1" style={{ color: '#9ca3af' }}>
           {performance && new Date(performance.performancedate).toLocaleDateString()} · {performance?.performancetype}
+          {manager && <span className="ml-3 text-xs px-2 py-0.5 rounded" style={{ backgroundColor: '#c9a84c22', color: '#c9a84c' }}>Click taken seats to cancel</span>}
         </p>
       </div>
 
       <div className="flex gap-8 flex-wrap">
-        {/* Seat map */}
         <div>
-          {/* Stage */}
           <div className="text-center text-xs py-2 mb-4 rounded" style={{ backgroundColor: '#c9a84c22', color: '#c9a84c', border: '1px solid #c9a84c44', width: 700 }}>
             STAGE
           </div>
 
-          {/* Orchestra + Box */}
           <div className="flex gap-3 mb-4">
-            {/* Box left X1-X8 */}
             <div className="flex flex-col gap-1 justify-center">
               <p className="text-xs mb-1 text-center" style={{ color: '#c9a84c' }}>BOX<br/>1-8</p>
-              {Array.from({ length: 8 }, (_, i) => (
-                <SeatButton key={i} seat={getBoxSeat(i + 1)} />
-              ))}
+              {Array.from({ length: 8 }, (_, i) => <SeatButton key={i} seat={getBoxSeat(i + 1)} />)}
             </div>
-
-            {/* Orchestra rows A-F */}
             <div>
               {ORCHESTRA_ROWS.map(row => <SeatRow key={row} row={row} count={30} />)}
             </div>
-
-            {/* Box right X9-X16 */}
             <div className="flex flex-col gap-1 justify-center">
               <p className="text-xs mb-1 text-center" style={{ color: '#c9a84c' }}>BOX<br/>9-16</p>
-              {Array.from({ length: 8 }, (_, i) => (
-                <SeatButton key={i} seat={getBoxSeat(i + 9)} />
-              ))}
+              {Array.from({ length: 8 }, (_, i) => <SeatButton key={i} seat={getBoxSeat(i + 9)} />)}
             </div>
           </div>
 
-          {/* Mezzanine rows G-N */}
           <div className="mb-4">
             {MEZZANINE_ROWS.map(row => <SeatRow key={row} row={row} count={30} />)}
           </div>
 
-          {/* Balcony rows AA-FF */}
           <div>
             {BALCONY_ROWS.map(row => <SeatRow key={row} row={row} count={BALCONY_COUNTS[row]} />)}
           </div>
 
-          {/* Legend */}
           <div className="flex flex-wrap gap-4 mt-6">
             {Object.entries(categoryColors).map(([cat, colors]) => (
               <div key={cat} className="flex items-center gap-2">
@@ -214,14 +239,12 @@ export default function SeatMapPage() {
           </div>
         </div>
 
-        {/* Reservation panel */}
+        {/* Reserve panel */}
         {selected && (
           <div className="rounded-lg p-5 flex flex-col gap-4" style={{ backgroundColor: '#16213e', border: '1px solid #c9a84c33', minWidth: 280, maxWidth: 320, height: 'fit-content' }}>
             <div className="flex items-center justify-between">
               <h2 className="font-semibold" style={{ color: '#fff8e7' }}>Reserve Seat</h2>
-              <button onClick={() => { setSelected(null); setReserveError(''); }} style={{ color: '#9ca3af' }}>
-                <X size={16} />
-              </button>
+              <button onClick={() => { setSelected(null); setReserveError(''); }} style={{ color: '#9ca3af' }}><X size={16} /></button>
             </div>
             <div className="text-sm" style={{ color: '#9ca3af' }}>
               <p>Seat: <span style={{ color: '#c9a84c' }}>{selected.seatnumber}</span></p>
@@ -269,17 +292,40 @@ export default function SeatMapPage() {
             </button>
           </div>
         )}
+
+        {/* Cancel panel — manager only */}
+        {cancelSeat && manager && (
+          <div className="rounded-lg p-5 flex flex-col gap-4" style={{ backgroundColor: '#16213e', border: '1px solid #ef444433', minWidth: 280, maxWidth: 320, height: 'fit-content' }}>
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold" style={{ color: '#fff8e7' }}>Cancel Reservation</h2>
+              <button onClick={() => setCancelSeat(null)} style={{ color: '#9ca3af' }}><X size={16} /></button>
+            </div>
+            <div className="text-sm flex flex-col gap-1" style={{ color: '#9ca3af' }}>
+              <p>Seat: <span style={{ color: '#fff8e7' }}>{cancelSeat.seatnumber}</span></p>
+              <p>Category: {cancelSeat.seatcategory}</p>
+              <p>Price: ${cancelSeat.price}</p>
+              <p>Reserved by: <span style={{ color: '#fff8e7' }}>{cancelSeat.firstname} {cancelSeat.lastname}</span></p>
+            </div>
+            <button
+              onClick={handleCancel}
+              disabled={cancelling}
+              className="flex items-center justify-center gap-2 py-2 rounded text-sm font-semibold disabled:opacity-50"
+              style={{ backgroundColor: '#7f1d1d', color: '#fca5a5' }}
+            >
+              <Trash2 size={14} />
+              {cancelling ? 'Cancelling...' : 'Cancel Reservation'}
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Will Call Receipt Modal */}
+      {/* Will Call Receipt */}
       {receipt && (
         <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: '#000000aa' }}>
           <div className="print-area rounded-lg p-8 max-w-md w-full" style={{ backgroundColor: '#fffde7', color: '#1a1a2e' }}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold">Will Call Reservation Form</h2>
-              <button onClick={() => setReceipt(null)} className="no-print" style={{ color: '#9ca3af' }}>
-                <X size={18} />
-              </button>
+              <button onClick={() => setReceipt(null)} className="no-print" style={{ color: '#9ca3af' }}><X size={18} /></button>
             </div>
             <div className="text-sm flex flex-col gap-1 mb-4">
               <p><strong>First Name:</strong> {receipt.patron.firstname} &nbsp; <strong>Last Name:</strong> {receipt.patron.lastname}</p>
@@ -294,11 +340,7 @@ export default function SeatMapPage() {
             </div>
             <div className="flex items-center justify-between" style={{ borderTop: '1px solid #c9a84c', paddingTop: 12 }}>
               <p className="font-bold">Total to be Collected: <span style={{ color: '#c9a84c' }}>${receipt.seat.price}</span></p>
-              <button
-                onClick={() => window.print()}
-                className="no-print px-4 py-1 rounded text-sm font-semibold"
-                style={{ backgroundColor: '#c9a84c', color: '#1a1a2e' }}
-              >
+              <button onClick={() => window.print()} className="no-print px-4 py-1 rounded text-sm font-semibold" style={{ backgroundColor: '#c9a84c', color: '#1a1a2e' }}>
                 Print
               </button>
             </div>

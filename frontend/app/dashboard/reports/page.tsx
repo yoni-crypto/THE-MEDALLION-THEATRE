@@ -12,20 +12,11 @@ interface Performance {
   productionname: string;
 }
 
-interface SoldSeat {
-  seatnumber: string;
-  seatcategory: string;
-  price: string;
-  firstname: string;
-  lastname: string;
-}
-
 interface ReportData {
   totalSeats: number;
   seatsSold: number;
   seatsAvailable: number;
   totalRevenue: string;
-  soldSeats: SoldSeat[];
 }
 
 interface AllSeat {
@@ -48,12 +39,17 @@ const selectStyle = {
   cursor: 'pointer',
 };
 
+const CATEGORIES = ['All', 'Orchestra', 'Mezzanine', 'Balcony', 'Box'];
+const STATUSES = ['All', 'Available', 'Sold'];
+
 export default function ReportsPage() {
   const [performances, setPerformances] = useState<Performance[]>([]);
   const [selectedId, setSelectedId] = useState('');
   const [report, setReport] = useState<ReportData | null>(null);
   const [allSeats, setAllSeats] = useState<AllSeat[]>([]);
   const [loading, setLoading] = useState(false);
+  const [filterStatus, setFilterStatus] = useState('All');
+  const [filterCategory, setFilterCategory] = useState('All');
 
   useEffect(() => {
     apiFetch('/api/performances').then(setPerformances).catch(() => setPerformances([]));
@@ -62,6 +58,8 @@ export default function ReportsPage() {
   useEffect(() => {
     if (!selectedId) { setReport(null); setAllSeats([]); return; }
     setLoading(true);
+    setFilterStatus('All');
+    setFilterCategory('All');
     Promise.all([
       apiFetch(`/api/reports/performance/${selectedId}`),
       apiFetch(`/api/performances/${selectedId}/seats`),
@@ -73,6 +71,14 @@ export default function ReportsPage() {
       setAllSeats([]);
     }).finally(() => setLoading(false));
   }, [selectedId]);
+
+  const filteredSeats = allSeats.filter(s => {
+    const statusMatch = filterStatus === 'All'
+      ? true
+      : filterStatus === 'Available' ? s.isavailable : !s.isavailable;
+    const categoryMatch = filterCategory === 'All' || s.seatcategory === filterCategory;
+    return statusMatch && categoryMatch;
+  });
 
   return (
     <div>
@@ -106,7 +112,6 @@ export default function ReportsPage() {
 
       {report && !loading && (
         <>
-          {/* Summary cards */}
           <div className="grid grid-cols-4 gap-4 mb-8">
             {[
               { icon: Armchair, label: 'Total Seats', value: report.totalSeats },
@@ -122,7 +127,34 @@ export default function ReportsPage() {
             ))}
           </div>
 
-          {/* Full seat table */}
+          {/* Filters */}
+          <div className="flex items-center gap-4 mb-4">
+            <div className="flex flex-col gap-1">
+              <label className="text-xs" style={{ color: '#9ca3af' }}>Status</label>
+              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} style={selectStyle}>
+                {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-xs" style={{ color: '#9ca3af' }}>Category</label>
+              <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} style={selectStyle}>
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="self-end pb-1 text-xs" style={{ color: '#9ca3af' }}>
+              Showing {filteredSeats.length} of {allSeats.length} seats
+            </div>
+            {(filterStatus !== 'All' || filterCategory !== 'All') && (
+              <button
+                onClick={() => { setFilterStatus('All'); setFilterCategory('All'); }}
+                className="self-end pb-1 text-xs underline"
+                style={{ color: '#c9a84c' }}
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+
           <div className="rounded-lg overflow-hidden" style={{ border: '1px solid #c9a84c22' }}>
             <table className="w-full text-sm">
               <thead>
@@ -133,7 +165,9 @@ export default function ReportsPage() {
                 </tr>
               </thead>
               <tbody>
-                {allSeats.map((s, i) => (
+                {filteredSeats.length === 0 ? (
+                  <tr><td colSpan={5} className="px-4 py-6 text-center" style={{ color: '#9ca3af' }}>No seats match the selected filters</td></tr>
+                ) : filteredSeats.map((s, i) => (
                   <tr key={s.seatnumber} style={{ backgroundColor: i % 2 === 0 ? '#16213e' : '#1a1a2e', borderTop: '1px solid #c9a84c11' }}>
                     <td className="px-4 py-2 font-mono text-xs" style={{ color: '#fff8e7' }}>{s.seatnumber}</td>
                     <td className="px-4 py-2" style={{ color: '#9ca3af' }}>{s.seatcategory}</td>
