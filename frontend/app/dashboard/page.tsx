@@ -20,14 +20,14 @@ function StatCard({ icon: Icon, label, value, href }: {
   href?: string;
 }) {
   const content = (
-    <div className="rounded-lg p-6 flex flex-col gap-2" style={{ backgroundColor: '#16213e', border: '1px solid #c9a84c22' }}>
+    <div className="rounded-lg p-6 flex flex-col gap-2 h-full" style={{ backgroundColor: '#16213e', border: '1px solid #c9a84c22' }}>
       <Icon size={22} color="#c9a84c" />
-      <p className="text-3xl font-bold" style={{ color: '#c9a84c' }}>{value}</p>
+      <p className="text-3xl font-bold mt-auto" style={{ color: '#c9a84c' }}>{value}</p>
       <p className="text-sm" style={{ color: '#9ca3af' }}>{label}</p>
     </div>
   );
-  if (href) return <Link href={href} className="hover:opacity-80 transition-opacity">{content}</Link>;
-  return content;
+  if (href) return <Link href={href} className="hover:opacity-80 transition-opacity block h-full">{content}</Link>;
+  return <div className="h-full">{content}</div>;
 }
 
 export default function DashboardPage() {
@@ -45,7 +45,7 @@ export default function DashboardPage() {
         <p className="text-sm mt-1" style={{ color: '#9ca3af' }}>Medallion Theatre — Ticket Sales Overview</p>
       </div>
       {error && <p className="text-red-400 text-sm mb-4">{error}</p>}
-      <div className="grid grid-cols-2 gap-4 mb-10" style={{ maxWidth: '640px' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-10 w-full">
         <StatCard icon={Users} label="Total Patrons" value={stats?.totalPatrons ?? '—'} href="/dashboard/patrons" />
         <StatCard icon={Theater} label="Productions" value={stats?.totalProductions ?? '—'} href="/dashboard/productions" />
         <StatCard icon={CalendarDays} label="Performances" value={stats?.totalPerformances ?? '—'} href="/dashboard/performances" />
