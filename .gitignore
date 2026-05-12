@@ -1,0 +1,11 @@
+frontend/node_modules/
+frontend/dist/
+backend/node_modules/
+backend/dist/
+backend/.env
+frontend/.env
+frontend/.env.local
+plan.md
+PLAN.md
+frontend/AGENTS.md
+frontend/CLAUDE.md

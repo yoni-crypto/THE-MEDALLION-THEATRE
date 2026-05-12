@@ -1,0 +1,18 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node --watch index.js",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "bcryptjs": "*",
+    "cors": "*",
+    "dotenv": "*",
+    "express": "*",
+    "helmet": "*",
+    "jsonwebtoken": "*",
+    "pg": "*"
+  }
+}

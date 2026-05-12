@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+:root {
+  --bg-dark: #1a1a2e;
+  --bg-card: #16213e;
+  --bg-sidebar: #0f0f23;
+  --gold: #c9a84c;
+  --gold-light: #e8c96a;
+  --cream: #fff8e7;
+  --text-muted: #9ca3af;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--cream);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-area,
+  .print-area * {
+    visibility: visible;
+  }
+  .print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+  }
+}
