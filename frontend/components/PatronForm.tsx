@@ -116,6 +116,17 @@ export default function PatronForm({ initial, patronId }: {
         </button>
         <button
           type="button"
+          onClick={() => {
+            setForm({ firstname: '', lastname: '', streetaddress: '', city: '', state: '', zipcode: '', phonenumber: '', email: '' });
+            setError('');
+          }}
+          className="px-6 py-2 rounded text-sm hover:opacity-80 transition-opacity"
+          style={{ backgroundColor: '#0f0f23', color: '#fff8e7', border: '1px solid #c9a84c55' }}
+        >
+          Clear Form
+        </button>
+        <button
+          type="button"
           onClick={() => router.push('/dashboard/patrons')}
           className="px-6 py-2 rounded text-sm"
           style={{ backgroundColor: '#16213e', color: '#9ca3af', border: '1px solid #c9a84c33' }}

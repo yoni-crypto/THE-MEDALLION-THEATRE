@@ -51,6 +51,47 @@ router.post('/', requireRole('manager'), async (req, res) => {
 });
 
 /*
+ * GET /api/performances/:id
+ * Returns a specific performance by its UUID.
+ */
+router.get('/:id', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT * FROM performance WHERE performanceid = $1',
+      [req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Performance not found' });
+    res.json(rows[0]);
+  } catch {
+    res.status(500).json({ error: 'Failed to fetch performance' });
+  }
+});
+
+/*
+ * PUT /api/performances/:id
+ * Updates an existing performance's date, type, or production. Manager only.
+ */
+router.put('/:id', requireRole('manager'), async (req, res) => {
+  const { performancedate, performancetype, productionid } = req.body;
+
+  if (!performancedate || !performancetype || !productionid) {
+    return res.status(400).json({ error: 'performancedate, performancetype, and productionid are required' });
+  }
+
+  try {
+    const { rows } = await pool.query(
+      `UPDATE performance SET performancedate=$1, performancetype=$2, productionid=$3
+       WHERE performanceid=$4 RETURNING *`,
+      [performancedate, performancetype, productionid, req.params.id]
+    );
+    if (!rows[0]) return res.status(404).json({ error: 'Performance not found' });
+    res.json(rows[0]);
+  } catch {
+    res.status(500).json({ error: 'Failed to update performance' });
+  }
+});
+
+/*
  * GET /api/performances/:id/seats
  * Returns all 602 seats with an isavailable boolean for the given performance.
  * A seat is unavailable if a ticket already exists for that seat + performance combination.

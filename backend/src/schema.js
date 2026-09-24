@@ -41,8 +41,16 @@ async function runSchema() {
       patronid UUID REFERENCES patron(patronid),
       performanceid UUID REFERENCES performance(performanceid),
       seatid UUID REFERENCES seat(seatid),
+      ticketstatus VARCHAR DEFAULT 'reserved' CHECK (ticketstatus IN ('reserved', 'paid', 'will-call')),
       UNIQUE(performanceid, seatid)
     );
+
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='ticket' AND column_name='ticketstatus') THEN
+        ALTER TABLE ticket ADD COLUMN ticketstatus VARCHAR DEFAULT 'reserved' CHECK (ticketstatus IN ('reserved', 'paid', 'will-call'));
+      END IF;
+    END $$;
 
     CREATE TABLE IF NOT EXISTS users (
       userid UUID PRIMARY KEY DEFAULT gen_random_uuid(),
